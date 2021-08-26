@@ -5,8 +5,7 @@ from tqdm import tqdm
 class Module(nn.Module):
     r"""This is the root Module of All module so the Model can train just passing .fit in the training process"""
     def __init__(self):
-        super(Module, self).__init__()
-        self.model = None
+        super(Module(), self).__init__()
 
     def fit(self, TrainDataLoader, TestDataLoader, epochs, loss_function, optimizer, scheduler=None):
         r"""
@@ -55,7 +54,7 @@ class Module(nn.Module):
         output:
         Train loss and Train accuracy on single epoch
         """
-        self.model.train()
+        self.train()
         fin_accuracy = 0
         fin_loss = 0
         tk0 = tqdm(TrainDataLoader, total=len(TrainDataLoader))
@@ -64,7 +63,7 @@ class Module(nn.Module):
                 data[key] = value.to('cuda')
             input_data, label = data.values()
             optimizer.zero_grad()
-            output = model(input_data)
+            output = self(input_data)
             loss = loss_function(output, label)
             accuracy = (label == output).sum()/len(output)
             loss.backward()
@@ -90,7 +89,7 @@ class Module(nn.Module):
         output:
         Test/Val loss and Test/Val accuracy
         """
-        self.model.eval()
+        self.eval()
         fin_accuracy = 0
         fin_loss = 0
         tk0 = tqdm(TestDataLoader, total=len(TestDataLoader))
@@ -98,7 +97,7 @@ class Module(nn.Module):
             for key, value in data.items():
                 data[key] = value.to('cuda')
             input_data, label = data.values()
-            output = model(input_data)
+            output = self(input_data)
             loss = loss_function(output, label)
             accuracy = (label == output).sum()/len(output)
             fin_loss += loss.item()
