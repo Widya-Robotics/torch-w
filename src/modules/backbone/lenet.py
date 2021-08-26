@@ -11,6 +11,11 @@ class LeNet(Module):
     this backbone is implementation of first Convolution Neural Network by Yan Le Cun 
     """
     def __init__(self, input_layer, input_shape, include_head=None):
+        r"""
+        input_layer -> input channels -> how many channels the input is
+        input_shape -> input image of shape (H,W)
+        include_head -> if None then just use the backbone if yes use the the head also for application classification
+        """
         super().__init__()
         self.input_layer = input_layer
         
