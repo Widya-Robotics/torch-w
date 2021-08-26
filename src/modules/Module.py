@@ -5,7 +5,7 @@ from tqdm import tqdm
 class Module(nn.Module):
     r"""This is the root Module of All module so the Model can train just passing .fit in the training process"""
     def __init__(self):
-        super(Module(), self).__init__()
+        super().__init__()
 
     def fit(self, TrainDataLoader, TestDataLoader, epochs, loss_function, optimizer, scheduler=None):
         r"""

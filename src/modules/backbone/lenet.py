@@ -10,7 +10,7 @@ class LeNet(Module):
     this backbone is implementation of first Convolution Neural Network by Yan Le Cun 
     """
     def __init__(self, input_layer):
-        super(LeNet(), self).__init__()
+        super().__init__()
         self.input_layer = input_layer
         
         self.conv1 = nn.Conv2d(input_layer, 6, (5,5), 1)
