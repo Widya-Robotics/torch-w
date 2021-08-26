@@ -28,10 +28,10 @@ class AlexNet(Module):
             padding_list = [0,0,2,0,1,1,1,0]
             kernel_list = [11,3,5,3,3,3,3,3]
             stride_list = [4,2,1,2,1,1,1,2]
-            self.output_size = [0,0]
+            self.output_size = input_shape
             for  i in range(8):
-                self.output_size[0] = int((math.floor((input_shape[0] + 2*padding_list[i] - kernel_list[i])/stride_list[i] +1)))
-                self.output_size[1] = int((math.floor((input_shape[1] + 2*padding_list[i] - kernel_list[i])/stride_list[i] +1)))
+                self.output_size[0] = int((math.floor((self.output_size[0] + 2*padding_list[i] - kernel_list[i])/stride_list[i] +1)))
+                self.output_size[1] = int((math.floor((self.output_size[1] + 2*padding_list[i] - kernel_list[i])/stride_list[i] +1)))
             self.fc1 = nn.Linear(self.output_size[0]*self.output_size[1]*256, 4096)
             self.dropout1 = nn.Dropout(0.5)
             self.fc2 = nn.Linear(4096,4096)
@@ -52,7 +52,7 @@ class AlexNet(Module):
         x = self.pool(x)
 
         if self.include_head is not None:
-            x.view(-1, 256*self.output_size[0]*self.output_size[1])
+            x = torch.flatten(x)
 
             x = F.relu(self.fc1(x))
             x = self.dropout1(x)
