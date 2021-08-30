@@ -66,16 +66,27 @@ class Module(nn.Module):
         fin_loss = 0
         tk0 = tqdm(TrainDataLoader, total=len(TrainDataLoader))
         for data in tk0:
-            for key, value in data.items():
-                data[key] = value.to(self.device)
-            input_data, label = data.values()
+            if isinstance(data, dict):
+                for key, value in data.items():
+                    data[key] = value.to(self.device)
+                input_data, label = data.values()
+            elif isinstance(data, list):
+                input_data, label = data
+                input_data.to(self.device)
+                label.to(self.device)
+            else:
+                raise ValueError("only support dictionary and list")
+
             optimizer.zero_grad()
             output = self(input_data)
-            label = torch.unsqueeze(label, dim=1)
 
             if self.type == 'binary_classification':
+                label = torch.unsqueeze(label, dim=1)
                 output = torch.sigmoid(output)
                 output_acc = torch.tensor([[1] if output[i] >= 0.5 else [0] for i in range(len(output))]).to(self.device)
+            
+            elif self.type == 'classification':
+                output_acc = torch.argmax(output, dim=1)
 
             loss = loss_function(output, label)
             accuracy = (label == output_acc).sum()/len(output)
@@ -85,6 +96,8 @@ class Module(nn.Module):
             fin_accuracy += accuracy
         train_loss = fin_loss / len(TrainDataLoader)
         train_acc = fin_accuracy/ len(TrainDataLoader)
+        print(label)
+        print(output_acc)
         
         print(f"Train Loss = {train_loss}  Train Accuracy = {train_acc}")
 
@@ -107,16 +120,26 @@ class Module(nn.Module):
         fin_loss = 0
         tk0 = tqdm(TestDataLoader, total=len(TestDataLoader))
         for data in tk0:
-            for key, value in data.items():
-                data[key] = value.to(self.device)
-            input_data, label = data.values()
-            output = self(input_data)
+            if isinstance(data, dict):
+                for key, value in data.items():
+                    data[key] = value.to(self.device)
+                input_data, label = data.values()
+            elif isinstance(data, list):
+                input_data, label = data
+                input_data.to(self.device)
+                label.to(self.device)
+            else:
+                raise ValueError("only support dictionary and list")
 
-            label = torch.unsqueeze(label, dim=1)
+            output = self(input_data)
             
             if self.type == 'binary_classification':
+                label = torch.unsqueeze(label, dim=1)
                 output = torch.sigmoid(output)
                 output_acc = torch.tensor([[1] if output[i] >= 0.5 else [0] for i in range(len(output))]).to(self.device)
+
+            elif self.type == 'classification':
+                output_acc = torch.argmax(output, dim=1)
 
             loss = loss_function(output, label)
             accuracy = (label == output_acc).sum()/len(output)
