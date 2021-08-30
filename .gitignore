@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 #other file
-debug.py
+debug*

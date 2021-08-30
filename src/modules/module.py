@@ -7,6 +7,7 @@ class Module(nn.Module):
     def __init__(self):
         super().__init__()
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        self.type = 'classification'
 
     def fit(self, TrainDataLoader, TestDataLoader, epochs, loss_function, optimizer, scheduler=None):
         r"""
@@ -25,9 +26,14 @@ class Module(nn.Module):
         History of the train loss, train accuracy, test/val loss, test/val accuracy
         type: list of dictionaries -> dict{train_loss, train_acc, val_loss, val_acc}
         """
+
+        if isinstance(loss_function, nn.BCELoss):
+            self.type = 'binary_classification'
+
         history = []
         for epoch in range(epochs):
             dash = "="*80
+            print(dash)
             print(f'Epoch: {epoch+1}')
             print(dash)
 
@@ -67,11 +73,12 @@ class Module(nn.Module):
             output = self(input_data)
             label = torch.unsqueeze(label, dim=1)
 
-            if isinstance(loss_function, nn.BCELoss):
+            if self.type == 'binary_classification':
                 output = torch.sigmoid(output)
+                output_acc = torch.tensor([[1] if output[i] >= 0.5 else [0] for i in range(len(output))]).to(self.device)
 
             loss = loss_function(output, label)
-            accuracy = (label == output).sum()/len(output)
+            accuracy = (label == output_acc).sum()/len(output)
             loss.backward()
             optimizer.step()
             fin_loss += loss.item()
@@ -107,12 +114,12 @@ class Module(nn.Module):
 
             label = torch.unsqueeze(label, dim=1)
             
-            if isinstance(loss_function, nn.BCELoss):
+            if self.type == 'binary_classification':
                 output = torch.sigmoid(output)
+                output_acc = torch.tensor([[1] if output[i] >= 0.5 else [0] for i in range(len(output))]).to(self.device)
 
             loss = loss_function(output, label)
-
-            accuracy = (label == output).sum()/len(output)
+            accuracy = (label == output_acc).sum()/len(output)
             fin_loss += loss.item()
             fin_accuracy += accuracy
         test_loss = fin_loss / len(TestDataLoader)
