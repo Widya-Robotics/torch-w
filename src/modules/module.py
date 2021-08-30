@@ -96,8 +96,6 @@ class Module(nn.Module):
             fin_accuracy += accuracy
         train_loss = fin_loss / len(TrainDataLoader)
         train_acc = fin_accuracy/ len(TrainDataLoader)
-        print(label)
-        print(output_acc)
         
         print(f"Train Loss = {train_loss}  Train Accuracy = {train_acc}")
 
