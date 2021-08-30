@@ -57,7 +57,7 @@ class AlexNet(Module):
         x = self.pool(x)
 
         if self.include_head is not None:
-            x = torch.flatten(x)
+            x = torch.flatten(x, start_dim = 1)
 
             x = F.relu(self.fc1(x))
             x = self.dropout1(x)

@@ -48,7 +48,7 @@ class MLP(Module):
     
     def forward(self, x):
         if self.input_flatten:
-            x = torch.flatten(x)
+            x = torch.flatten(x, start_dim = 1)
 
         x = self.models(x)
 

@@ -46,7 +46,7 @@ class LeNet(Module):
         # print(x.shape)
 
         if self.include_head is not None:
-            x = torch.flatten(x)
+            x = torch.flatten(x, start_dim = 1)
             # print(x.shape)
 
             x = F.sigmoid(self.fc1(x))
