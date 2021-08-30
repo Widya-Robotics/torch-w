@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.modules.Module import Module
+from src.modules.module import Module
 import math
 
 
