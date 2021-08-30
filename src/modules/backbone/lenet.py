@@ -38,10 +38,10 @@ class LeNet(Module):
             self.fc3 = nn.Linear(84,include_head)
     
     def forward(self, x):
-        x = torch.sigmoid(self.conv1(x))
+        x = F.relu(self.conv1(x))
         x = self.avg_pool(x)
 
-        x = torch.sigmoid(self.conv2(x))
+        x = F.relu(self.conv2(x))
         x = self.avg_pool(x)
         # print(x.shape)
 
@@ -49,8 +49,8 @@ class LeNet(Module):
             x = torch.flatten(x, start_dim = 1)
             # print(x.shape)
 
-            x = torch.sigmoid(self.fc1(x))
-            x = torch.sigmoid(self.fc2(x))
-            x = torch.sigmoid(self.fc3(x))
+            x = F.relu(self.fc1(x))
+            x = F.relu(self.fc2(x))
+            x = F.relu(self.fc3(x))
 
         return x
