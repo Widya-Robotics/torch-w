@@ -6,6 +6,7 @@ class Module(nn.Module):
     r"""This is the root Module of All module so the Model can train just passing .fit in the training process"""
     def __init__(self):
         super().__init__()
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     def fit(self, TrainDataLoader, TestDataLoader, epochs, loss_function, optimizer, scheduler=None):
         r"""
@@ -26,17 +27,17 @@ class Module(nn.Module):
         """
         history = []
         for epoch in range(epochs):
-            dash = "="*10
-            print(epoch+1)
+            dash = "="*80
+            print(f'Epoch: {epoch+1}')
             print(dash)
 
             train_loss, train_acc = self._train(TrainDataLoader, loss_function, optimizer)
-            test_loss, test_acc = self.eval(TestDataLoader, loss_function)
+            test_loss, test_acc = self._eval(TestDataLoader, loss_function)
 
             if scheduler is not None:
                 scheduler.step(test_loss)
             
-            history.append({"train_loss":train_loss, "train_acc":train_acc, "val_loss":val_loss, "val_acc":val_acc})
+            history.append({"train_loss":train_loss, "train_acc":train_acc, "val_loss":test_loss, "val_acc":test_acc})
 
         return history
 
@@ -60,10 +61,15 @@ class Module(nn.Module):
         tk0 = tqdm(TrainDataLoader, total=len(TrainDataLoader))
         for data in tk0:
             for key, value in data.items():
-                data[key] = value.to('cuda')
+                data[key] = value.to(self.device)
             input_data, label = data.values()
             optimizer.zero_grad()
             output = self(input_data)
+            label = torch.unsqueeze(label, dim=1)
+
+            if isinstance(loss_function, nn.BCELoss):
+                output = torch.sigmoid(output)
+
             loss = loss_function(output, label)
             accuracy = (label == output).sum()/len(output)
             loss.backward()
@@ -77,7 +83,7 @@ class Module(nn.Module):
 
         return train_loss, train_acc
 
-    def eval(self,TestDataLoader, loss_function):
+    def _eval(self,TestDataLoader, loss_function):
         r"""
         input:
         TestDataLoader: test dataset that already process to torch.utils.DataLoader type: torch.utils.DataLoader
@@ -95,16 +101,23 @@ class Module(nn.Module):
         tk0 = tqdm(TestDataLoader, total=len(TestDataLoader))
         for data in tk0:
             for key, value in data.items():
-                data[key] = value.to('cuda')
+                data[key] = value.to(self.device)
             input_data, label = data.values()
             output = self(input_data)
+
+            label = torch.unsqueeze(label, dim=1)
+            
+            if isinstance(loss_function, nn.BCELoss):
+                output = torch.sigmoid(output)
+
             loss = loss_function(output, label)
+
             accuracy = (label == output).sum()/len(output)
             fin_loss += loss.item()
             fin_accuracy += accuracy
         test_loss = fin_loss / len(TestDataLoader)
         test_acc = fin_accuracy/ len(TestDataLoader)
         
-        print(f"Test Loss = {test_loss}  Test Accuracy = {test_acc}")
+        print(f"Val Loss = {test_loss}  Val Accuracy = {test_acc}")
 
         return test_loss, test_acc
