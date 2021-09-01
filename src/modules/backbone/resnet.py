@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from src.modules.Module import Module
+from src.modules.module import Module
 
 class block(nn.Module):
     def __init__(
