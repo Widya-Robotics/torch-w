@@ -71,7 +71,7 @@ class Darknet53(Module):
 
         self.include_head = include_head
 
-        self.conv1 = conv_batch(3,32)
+        self.conv1 = conv_batch(input_layer,32)
         self.conv2 = conv_batch(32, 64, stride=2)
 
         self.residual_block1 = self.make_layer(DarkResidualBlock, input_layer=64, num_blocks=1)
