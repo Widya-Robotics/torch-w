@@ -9,7 +9,7 @@ class Module(nn.Module):
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.type = 'classification'
 
-    def fit(self, TrainDataLoader, TestDataLoader, epochs, loss_function, optimizer, scheduler=None):
+    def fit(self, TrainDataLoader, TestDataLoader, epochs, loss_function, optimizer, device = None, scheduler=None):
         r"""
         input:
         TrainDataLoader: train dataset that already process to torch.utils.DataLoader type: torch.utils.DataLoader
@@ -37,8 +37,8 @@ class Module(nn.Module):
             print(f'Epoch: {epoch+1}')
             print(dash)
 
-            train_loss, train_acc = self._train(TrainDataLoader, loss_function, optimizer)
-            test_loss, test_acc = self._eval(TestDataLoader, loss_function)
+            train_loss, train_acc = self._train(TrainDataLoader, loss_function, optimizer, device)
+            test_loss, test_acc = self._eval(TestDataLoader, loss_function, device)
 
             if scheduler is not None:
                 scheduler.step(test_loss)
@@ -61,6 +61,10 @@ class Module(nn.Module):
         output:
         Train loss and Train accuracy on single epoch
         """
+
+        if device is None:
+            device = self.device
+
         self.train()
         fin_accuracy = 0
         fin_loss = 0
@@ -68,12 +72,12 @@ class Module(nn.Module):
         for data in tk0:
             if isinstance(data, dict):
                 for key, value in data.items():
-                    data[key] = value.to(self.device)
+                    data[key] = value.to(device)
                 input_data, label = data.values()
             elif isinstance(data, list):
                 input_data, label = data
-                input_data.to(self.device)
-                label.to(self.device)
+                input_data = input_data.to(device)
+                label = label.to(device)
             else:
                 raise ValueError("only support dictionary and list")
 
@@ -83,7 +87,7 @@ class Module(nn.Module):
             if self.type == 'binary_classification':
                 label = torch.unsqueeze(label, dim=1)
                 output = torch.sigmoid(output)
-                output_acc = torch.tensor([[1] if output[i] >= 0.5 else [0] for i in range(len(output))]).to(self.device)
+                output_acc = torch.tensor([[1] if output[i] >= 0.5 else [0] for i in range(len(output))]).to(device)
             
             elif self.type == 'classification':
                 output_acc = torch.argmax(output, dim=1)
@@ -113,6 +117,10 @@ class Module(nn.Module):
         output:
         Test/Val loss and Test/Val accuracy
         """
+
+        if device is None:
+            device = self.device
+
         self.eval()
         fin_accuracy = 0
         fin_loss = 0
@@ -120,12 +128,12 @@ class Module(nn.Module):
         for data in tk0:
             if isinstance(data, dict):
                 for key, value in data.items():
-                    data[key] = value.to(self.device)
+                    data[key] = value.to(device)
                 input_data, label = data.values()
             elif isinstance(data, list):
                 input_data, label = data
-                input_data.to(self.device)
-                label.to(self.device)
+                input_data = input_data.to(device)
+                label = label.to(device)
             else:
                 raise ValueError("only support dictionary and list")
 
@@ -134,7 +142,7 @@ class Module(nn.Module):
             if self.type == 'binary_classification':
                 label = torch.unsqueeze(label, dim=1)
                 output = torch.sigmoid(output)
-                output_acc = torch.tensor([[1] if output[i] >= 0.5 else [0] for i in range(len(output))]).to(self.device)
+                output_acc = torch.tensor([[1] if output[i] >= 0.5 else [0] for i in range(len(output))]).to(device)
 
             elif self.type == 'classification':
                 output_acc = torch.argmax(output, dim=1)
