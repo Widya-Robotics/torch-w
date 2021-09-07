@@ -131,3 +131,7 @@ dmypy.json
 #other file
 debug*
 data/
+test.py
+train_emnist.py
+coba.py
+emnistclean2*
