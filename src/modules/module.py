@@ -49,7 +49,7 @@ class Module(nn.Module):
 
         
 
-    def _train(self, TrainDataLoader, loss_function, optimizer):
+    def _train(self, TrainDataLoader, loss_function, optimizer, device):
         r"""
         input:
         TrainDataLoader: train dataset that already process to torch.utils.DataLoader type: torch.utils.DataLoader
@@ -105,7 +105,7 @@ class Module(nn.Module):
 
         return train_loss, train_acc
 
-    def _eval(self,TestDataLoader, loss_function):
+    def _eval(self,TestDataLoader, loss_function, device):
         r"""
         input:
         TestDataLoader: test dataset that already process to torch.utils.DataLoader type: torch.utils.DataLoader
