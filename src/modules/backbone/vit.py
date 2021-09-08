@@ -76,7 +76,7 @@ class Transformer(Module):
         return x
 
 class ViT(Module):
-    def __init__(self, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, pool='cls', channels = 3, dim_head=64, dropout = 0., emb_dropout = 0.):
+    def __init__(self, image_size, patch_size, dim, depth, heads, mlp_dim, pool='cls', channels = 3, dim_head=64, dropout = 0., emb_dropout = 0., include_head = None):
         super().__init__()
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
@@ -101,10 +101,11 @@ class ViT(Module):
 
         self.pool = pool
         self.to_latent = nn.Identity()
-
-        self.mlp_head = Sequential([
-            nn.LayerNorm(dim), nn.Linear(dim, num_classes)
-        ])
+        self.include_head = include_head
+        if self.include_head is not None:
+            self.mlp_head = Sequential([
+                nn.LayerNorm(dim), nn.Linear(dim, self.include_head)
+            ])
 
     def forward(self, img):
         x = self.to_patch_embedding(img)
@@ -120,4 +121,4 @@ class ViT(Module):
         x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
 
         x = self.to_latent(x)
-        return self.mlp_head(x)
+        return self.mlp_head(x) if self.include_head is not None else x
