@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from src.modules.module import Module
 
 class ConvBnRelu(Module):
@@ -63,4 +64,3 @@ class FPN(Module):
         p4 = F.interpolate(p4, size=(h, w))
         p5 = F.interpolate(p5, size=(h, w))
         return torch.cat([p2, p3, p4, p5], dim=1)
-)
