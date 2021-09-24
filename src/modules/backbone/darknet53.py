@@ -1,7 +1,5 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
 
 from src.modules.module import Module
 from src.modules.sequential import Sequential
