@@ -125,7 +125,7 @@ class ShuffleNetV2(Module):
 
         input_channel = self.stage_out_channels[1]
         self.conv1 = conv_bn(3, input_channel, 2)    
-	self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+	    self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         
         self.features = []
         for idxstage in range(len(self.stage_repeats)):
@@ -140,10 +140,10 @@ class ShuffleNetV2(Module):
                 
         self.features = nn.Sequential(*self.features)
 
-        self.conv_last      = conv_1x1_bn(input_channel, self.stage_out_channels[-1])
-	self.globalpool = nn.Sequential(nn.AvgPool2d(int(input_shape[0]/32)))              
-   
-	self.classifier = nn.Sequential(nn.Linear(self.stage_out_channels[-1], include_head))
+        self.conv_last  = conv_1x1_bn(input_channel, self.stage_out_channels[-1])
+        self.globalpool = nn.Sequential(nn.AvgPool2d(int(input_shape[0]/32)))              
+    
+        self.classifier = nn.Sequential(nn.Linear(self.stage_out_channels[-1], include_head))
 
     def forward(self, x):
         x = self.conv1(x)
