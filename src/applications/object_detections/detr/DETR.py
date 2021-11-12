@@ -45,7 +45,7 @@ class DETR(torch.nn.Module):
         np.random.seed(seed)
         random.seed(seed)
 
-        self.model, criterion, postprocessors = build_model() #need to fix the build model function
+        self.model, self.criterion, self.postprocessors = build_model() #need to fix the build model function
         self.model.to(device)
     
     def forward(self, x):
@@ -110,5 +110,16 @@ class DETR(torch.nn.Module):
             
             print("===========!!!Start Training!!!===========")
             start_time = time.time()
+
             for epoch in range(start_epoch, epochs):
                 pass
+            
+            total_time = time.time() - start_time
+            total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+            print('Training time {}'.format(total_time_str))
+        
+    def eval(
+        self,
+        test_path:str
+    ):
+        pass
