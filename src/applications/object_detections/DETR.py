@@ -46,7 +46,7 @@ class DETR(torch.nn.Module):
                 set_cost_class:float=1,
                 set_cost_bbox:float=5,
                 set_cost_giou:float=2):
-
+        ##Parameters Validation##
         if type not in ['detr-r50','detr-dc5-r50','detr-r101','detr-dc5-r101']:
             raise ValueError("type only support on 'detr-r50','detr-dc5-r50','detr-r101','detr-dc5-r101'")
         
@@ -66,6 +66,9 @@ class DETR(torch.nn.Module):
         if position_embedding not in ['sine', 'learned']:
             raise ValueError("position embedding only support on 'sine' and 'learned'")
 
+        if frozen_weights is not None:
+            assert masks, "Frozen training is meant for segmentation only"
+        #####################################
         self.type = type
         self.pretrained = pretrained
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -80,7 +83,9 @@ class DETR(torch.nn.Module):
 
         self.model, self.criterion, self.postprocessors = build_model(backbone, dilation, enc_layers, dec_layers,dim_feedforward, nheads, dropout,pre_norm,hidden_dim,position_embedding,num_classes, device, num_queries, aux_loss, masks, panoptic, frozen_weights, bbox_loss_coef, giou_loss_coef, dice_loss_coef, mask_loss_coef, eos_coef, lr_backbone, set_cost_class, set_cost_bbox, set_cost_giou) #need to fix the build model function
         self.model.to(device)
-    
+
+        self.n_parameters = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+
     def forward(self, x):
         return self.model(x)
     
@@ -109,8 +114,8 @@ class DETR(torch.nn.Module):
 
         lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, lr_drop)
 
-        dataset_train = build_dataset() #perlu dibuat skema untuk build datasets
-        dataset_val = build_dataset()
+        dataset_train = build_dataset(image_set='train') #perlu dibuat skema untuk build datasets
+        dataset_val = build_dataset(image_set='val')
 
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
         sampler_val = torch.utils.data.SequentialSampler(dataset_val)
