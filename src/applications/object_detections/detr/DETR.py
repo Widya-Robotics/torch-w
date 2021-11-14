@@ -23,29 +23,62 @@ class DETR(torch.nn.Module):
                 type:str,
                 num_classes:int=91, 
                 enc_layers:int=6, 
-                dev_layers:int=6, 
+                dec_layers:int=6, 
                 dim_feedforward:int=2048, 
                 hidden_dim:int=256, 
                 dropout:float=0.1, 
-                nheads:int=8, 
+                nheads:int=8,
+                position_embedding:str='sine', 
                 num_queries:int=100, 
                 pre_norm:bool=False,
                 seed:int=42,
-                pretrained:str=None):
+                aux_loss:bool=True,
+                masks:bool=False,
+                panoptic:bool=False,
+                pretrained:str=None,
+                bbox_loss_coef:float=5,
+                giou_loss_coef:float=2,
+                dice_loss_coef:float=1,
+                mask_loss_coef:float=1,
+                eos_coef:float=0.1,
+                lr_backbone:float=1e-5,
+                frozen_weights:str=None,
+                set_cost_class:float=1,
+                set_cost_bbox:float=5,
+                set_cost_giou:float=2):
 
         if type not in ['detr-r50','detr-dc5-r50','detr-r101','detr-dc5-r101']:
             raise ValueError("type only support on 'detr-r50','detr-dc5-r50','detr-r101','detr-dc5-r101'")
+        
+        if type == 'detr-r50':
+            backbone = 'resnet50'
+            dilation = False
+        elif type == 'detr-dc5-r50':
+            backbone = 'resnet50'
+            dilation = True
+        elif type == 'detr-r101':
+            backbone = 'resnet101'
+            dilation = False
+        else:
+            backbone = 'resnet101'
+            dilation = True
+
+        if position_embedding not in ['sine', 'learned']:
+            raise ValueError("position embedding only support on 'sine' and 'learned'")
+
         self.type = type
         self.pretrained = pretrained
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.num_classes = num_classes
         self.seed = seed + utils.get_rank()
+        self.frozen_weights = frozen_weights
+        self.lr_backbone = lr_backbone
         
         torch.manual_seed(seed)
         np.random.seed(seed)
         random.seed(seed)
 
-        self.model, self.criterion, self.postprocessors = build_model() #need to fix the build model function
+        self.model, self.criterion, self.postprocessors = build_model(backbone, dilation, enc_layers, dec_layers,dim_feedforward, nheads, dropout,pre_norm,hidden_dim,position_embedding,num_classes, device, num_queries, aux_loss, masks, panoptic, frozen_weights, bbox_loss_coef, giou_loss_coef, dice_loss_coef, mask_loss_coef, eos_coef, lr_backbone, set_cost_class, set_cost_bbox, set_cost_giou) #need to fix the build model function
         self.model.to(device)
     
     def forward(self, x):
@@ -56,7 +89,6 @@ class DETR(torch.nn.Module):
         train_path:str,
         val_path:str,
         lr:float=1e-4,
-        lr_backbone:float=1e-5,
         batch_size:int=2,
         num_workers:int=2,
         weight_decay:float=1e-4,
@@ -64,13 +96,12 @@ class DETR(torch.nn.Module):
         epochs:int=300,
         lr_drop:int=200,
         clip_max_norm:float=0.1,
-        frozen_weights:str=None,
     ):
         param_dicts = [
         {"params": [p for n, p in self.named_parameters() if "backbone" not in n and p.requires_grad]},
         {
             "params": [p for n, p in self.named_parameters() if "backbone" in n and p.requires_grad],
-            "lr": lr_backbone,
+            "lr": self.lr_backbone,
         },
         ]#perlu dibuatin skema multi GPU
         optimizer = torch.optim.AdamW(param_dicts, lr=lr,
@@ -92,8 +123,8 @@ class DETR(torch.nn.Module):
         data_loader_val = DataLoader(dataset_val, batch_size, sampler=sampler_val,
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=num_workers)
         
-        if frozen_weights is not None:
-            checkpoint = torch.load(frozen_weights, map_location='cpu')
+        if self.frozen_weights is not None:
+            checkpoint = torch.load(self.frozen_weights, map_location='cpu')
             self.detr.load_state_dict(checkpoint['model'])
         
         if self.pretrained is not None:

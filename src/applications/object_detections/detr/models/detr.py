@@ -301,7 +301,7 @@ class MLP(nn.Module):
         return x
 
 
-def build(args):
+def build(backbone, dilation,enc_layers, dec_layers,dim_feedforward, nheads, dropout,pre_norm,hidden_dim,position_embedding, num_classes, device, num_queries, aux_loss, masks, panoptic, frozen_weights, bbox_loss_coef, giou_loss_coef, dice_loss_coef, mask_loss_coef, eos_coef, lr_backbone, set_cost_class, set_cost_bbox, set_cost_giou):
     # the `num_classes` naming here is somewhat misleading.
     # it indeed corresponds to `max_obj_id + 1`, where max_obj_id
     # is the maximum id for a class in your dataset. For example,
@@ -310,49 +310,46 @@ def build(args):
     # you should pass `num_classes` to be 2 (max_obj_id + 1).
     # For more details on this, check the following discussion
     # https://github.com/facebookresearch/detr/issues/108#issuecomment-650269223
-    num_classes = 20 if args.dataset_file != 'coco' else 91
-    if args.dataset_file == "coco_panoptic":
-        # for panoptic, we just add a num_classes that is large enough to hold
-        # max_obj_id + 1, but the exact value doesn't really matter
-        num_classes = 250
-    device = torch.device(args.device)
+    num_classes = num_classes
+    
+    device = torch.device(device)
 
-    backbone = build_backbone(args)
+    backbone = build_backbone(backbone, dilation,hidden_dim,position_embedding,masks,lr_backbone)
 
-    transformer = build_transformer(args)
+    transformer = build_transformer(enc_layers,dec_layers,hidden_dim,dim_feedforward, nheads, dropout,pre_norm)
 
     model = DETR(
         backbone,
         transformer,
         num_classes=num_classes,
-        num_queries=args.num_queries,
-        aux_loss=args.aux_loss,
+        num_queries=num_queries,
+        aux_loss=aux_loss,
     )
-    if args.masks:
-        model = DETRsegm(model, freeze_detr=(args.frozen_weights is not None))
-    matcher = build_matcher(args)
-    weight_dict = {'loss_ce': 1, 'loss_bbox': args.bbox_loss_coef}
-    weight_dict['loss_giou'] = args.giou_loss_coef
-    if args.masks:
-        weight_dict["loss_mask"] = args.mask_loss_coef
-        weight_dict["loss_dice"] = args.dice_loss_coef
+    if masks:
+        model = DETRsegm(model, freeze_detr=(frozen_weights is not None))
+    matcher = build_matcher(set_cost_class, set_cost_bbox, set_cost_giou)
+    weight_dict = {'loss_ce': 1, 'loss_bbox': bbox_loss_coef}
+    weight_dict['loss_giou'] = giou_loss_coef
+    if masks:
+        weight_dict["loss_mask"] = mask_loss_coef
+        weight_dict["loss_dice"] = dice_loss_coef
     # TODO this is a hack
-    if args.aux_loss:
+    if aux_loss:
         aux_weight_dict = {}
-        for i in range(args.dec_layers - 1):
+        for i in range(dec_layers - 1):
             aux_weight_dict.update({k + f'_{i}': v for k, v in weight_dict.items()})
         weight_dict.update(aux_weight_dict)
 
     losses = ['labels', 'boxes', 'cardinality']
-    if args.masks:
+    if masks:
         losses += ["masks"]
     criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
-                             eos_coef=args.eos_coef, losses=losses)
+                             eos_coef=eos_coef, losses=losses)
     criterion.to(device)
     postprocessors = {'bbox': PostProcess()}
-    if args.masks:
+    if masks:
         postprocessors['segm'] = PostProcessSegm()
-        if args.dataset_file == "coco_panoptic":
+        if panoptic: #still need to fix this things
             is_thing_map = {i: i <= 90 for i in range(201)}
             postprocessors["panoptic"] = PostProcessPanoptic(is_thing_map, threshold=0.85)
 
