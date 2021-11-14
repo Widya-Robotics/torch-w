@@ -72,6 +72,7 @@ class DETR(torch.nn.Module):
         self.type = type
         self.pretrained = pretrained
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = device
         self.num_classes = num_classes
         self.seed = seed + utils.get_rank()
         self.frozen_weights = frozen_weights
@@ -101,6 +102,7 @@ class DETR(torch.nn.Module):
         epochs:int=300,
         lr_drop:int=200,
         clip_max_norm:float=0.1,
+        output_dir:str=None
     ):
         param_dicts = [
         {"params": [p for n, p in self.named_parameters() if "backbone" not in n and p.requires_grad]},
@@ -148,7 +150,32 @@ class DETR(torch.nn.Module):
             start_time = time.time()
 
             for epoch in range(start_epoch, epochs):
-                pass
+                train_stats = train_one_epoch(
+                    self.model, self.criterion, data_loader_train, optimizer, self.device, epoch,
+                    clip_max_norm)
+                lr_scheduler.step()
+                if output_dir is not None:
+                    checkpoint_paths = [output_dir/ 'checkpoint.pth']
+                    if (epoch + 1) % lr_drop == 0 or (epoch + 1) % 100 == 0:
+                        checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
+                    for checkpoint_path in checkpoint_paths:
+                        utils.save_on_master({
+                            'model': self.model.state_dict(),
+                            'optimizer': optimizer.state_dict(),
+                            'lr_scheduler': lr_scheduler.state_dict(),
+                            'epoch': epoch,
+                        }, checkpoint_path)
+                test_stats, coco_evaluator = evaluate(
+                    self.model, self.criterion, self.postprocessors, data_loader_val, base_ds, self.device, output_dir #need to fix later
+                )
+                log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                     **{f'test_{k}': v for k, v in test_stats.items()},
+                     'epoch': epoch,
+                     'n_parameters': self.n_parameters}
+                
+                if output_dir is not None and utils.is_main_process():
+                    with (output_dir / "log.txt").open("a") as f:
+                        f.write(json.dumps(log_stats) + "\n")
             
             total_time = time.time() - start_time
             total_time_str = str(datetime.timedelta(seconds=int(total_time)))
