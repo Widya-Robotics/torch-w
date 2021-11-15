@@ -13,6 +13,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, DistributedSampler
 
+from .detr.datasets import coco
 from .detr.util import misc as utils
 from .detr.datasets import build_dataset, get_coco_api_from_dataset
 from .detr.engine import evaluate, train_one_epoch
@@ -77,6 +78,8 @@ class DETR(torch.nn.Module):
         self.seed = seed + utils.get_rank()
         self.frozen_weights = frozen_weights
         self.lr_backbone = lr_backbone
+        self.masks = masks
+        self.panoptic = panoptic
         
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -116,8 +119,8 @@ class DETR(torch.nn.Module):
 
         lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, lr_drop)
 
-        dataset_train = build_dataset(image_set='train') #perlu dibuat skema untuk build datasets
-        dataset_val = build_dataset(image_set='val')
+        dataset_train = build_dataset(image_set = 'train', path=train_path, masks=self.masks, panoptic=self.panoptic) #perlu dibuat skema untuk build datasets
+        dataset_val = build_dataset(image_set = 'val',path=val_path, masks=self.masks, panoptic=self.panoptic)
 
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
         sampler_val = torch.utils.data.SequentialSampler(dataset_val)
@@ -129,6 +132,13 @@ class DETR(torch.nn.Module):
                                    collate_fn=utils.collate_fn, num_workers=num_workers)
         data_loader_val = DataLoader(dataset_val, batch_size, sampler=sampler_val,
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=num_workers)
+        
+        if self.panoptic:
+            # We also evaluate AP during panoptic training, on original coco DS
+            coco_val = coco.build(image_set = 'val',path=val_path, masks=self.masks)
+            base_ds = get_coco_api_from_dataset(coco_val)
+        else:
+            base_ds = get_coco_api_from_dataset(dataset_val)
         
         if self.frozen_weights is not None:
             checkpoint = torch.load(self.frozen_weights, map_location='cpu')
@@ -183,6 +193,24 @@ class DETR(torch.nn.Module):
         
     def eval(
         self,
-        test_path:str
+        test_path:str,
+        batch_size:int=2,
+        num_workers:int=2,
+        output_dir:str=None
     ):
-        pass
+        dataset_val = build_dataset(image_set = 'val',path=test_path, masks=self.masks, panoptic=self.panoptic)
+        sampler_val = torch.utils.data.SequentialSampler(dataset_val)
+        data_loader_val = DataLoader(dataset_val, batch_size, sampler=sampler_val,
+                                 drop_last=False, collate_fn=utils.collate_fn, num_workers=num_workers)
+        
+        if self.panoptic:
+            # We also evaluate AP during panoptic training, on original coco DS
+            coco_val = coco.build(image_set = 'val',path=test_path, masks=self.masks)
+            base_ds = get_coco_api_from_dataset(coco_val)
+        else:
+            base_ds = get_coco_api_from_dataset(dataset_val)
+
+        test_stats, coco_evaluator = evaluate(self.model, self.criterion, self.postprocessors,
+                                              data_loader_val, base_ds, self.device, output_dir)
+        if output_dir is not None:
+            utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
