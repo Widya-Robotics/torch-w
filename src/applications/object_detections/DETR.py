@@ -21,7 +21,7 @@ from .detr.models import build_model
 
 class DETR(torch.nn.Module):
     def __init__(self, 
-                type:str,
+                type:str='detr-r50',
                 num_classes:int=91, 
                 enc_layers:int=6, 
                 dec_layers:int=6, 
@@ -47,6 +47,7 @@ class DETR(torch.nn.Module):
                 set_cost_class:float=1,
                 set_cost_bbox:float=5,
                 set_cost_giou:float=2):
+        super().__init__()
         ##Parameters Validation##
         if type not in ['detr-r50','detr-dc5-r50','detr-r101','detr-dc5-r101']:
             raise ValueError("type only support on 'detr-r50','detr-dc5-r50','detr-r101','detr-dc5-r101'")
