@@ -192,7 +192,7 @@ class DETR(torch.nn.Module):
             total_time_str = str(datetime.timedelta(seconds=int(total_time)))
             print('Training time {}'.format(total_time_str))
         
-    def eval(
+    def evaluate(
         self,
         test_path:str,
         batch_size:int=2,
